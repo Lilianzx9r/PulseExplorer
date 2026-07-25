@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Inclure les sessions et données POI dans le backup ADB -->
+    <include domain="file" path="gpx_sessions.json"/>
+    <include domain="file" path="poi_layers.json"/>
+</full-backup-content>

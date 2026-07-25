@@ -1,0 +1,2 @@
+PulseExplorer v0.4
+Free-First multi-agent architecture
