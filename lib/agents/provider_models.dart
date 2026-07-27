@@ -4,6 +4,19 @@ import 'ai_provider.dart';
 /// Il s'agit d'un garde-fou de configuration, pas d'une garantie de facturation.
 enum CostMode { freeOnly, freeTier, paidAllowed }
 
+extension CostModeLabel on CostMode {
+  String get label {
+    switch (this) {
+      case CostMode.freeOnly:
+        return 'Free';
+      case CostMode.freeTier:
+        return 'Free Tier';
+      case CostMode.paidAllowed:
+        return 'Payant possible';
+    }
+  }
+}
+
 class AiModelInfo {
   final String id;
   final String name;
@@ -20,6 +33,8 @@ class AiModelInfo {
   });
 
   bool get isFree => costMode == CostMode.freeOnly;
+
+  String get costLabel => costMode.label;
 }
 
 class ProviderDefinition {

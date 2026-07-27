@@ -7,22 +7,6 @@ import 'html_poi_extractor.dart';
 import 'nominatim_helper.dart';
 import 'ai_lab_screen.dart';
 
-class _AgentDefinition {
-  final String id;
-  final String label;
-  final String description;
-  final String model;
-  final DiscoveryAgent Function(AiProvider provider) create;
-
-  const _AgentDefinition({
-    required this.id,
-    required this.label,
-    required this.description,
-    required this.model,
-    required this.create,
-  });
-}
-
 /// Interface de test multi-agents / multi-modèles.
 class ExplorerScreen extends StatefulWidget {
   final BoundingBox? initialBounds;
@@ -37,8 +21,8 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
   final _queryController = TextEditingController();
   final _interestsController = TextEditingController();
 
-  List<_AgentDefinition> _definitions = [];
-  final Map<String, bool> _enabled = {};
+  List<AgentDefinition> _definitions = [];
+  ProviderFactory? _providerFactory;
 
   bool _osmEnabled = true;
   bool _running = false;
@@ -49,57 +33,72 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
   @override
   void initState() {
     super.initState();
-
     _queryController.text = HtmlPoiExtractor.lastRequest;
+    _loadConfiguration();
+  }
 
+  List<AgentDefinition> _defaultDefinitions() {
     final models = HtmlPoiExtractor.kFreeModels;
-    final modelA = models.isNotEmpty
-        ? models[0].id
-        : HtmlPoiExtractor.selectedModel;
+    final modelA = models.isNotEmpty ? models[0].id : HtmlPoiExtractor.selectedModel;
     final modelB = models.length > 1 ? models[1].id : modelA;
-
-    _definitions = [
-      _AgentDefinition(
+    return [
+      AgentDefinition(
         id: 'general-a',
-        label: 'IA généraliste A',
+        name: 'IA généraliste A',
         description: 'Exploration générale',
+        role: 'exploration générale',
+        instructions: 'Identifie les lieux les plus intéressants et variés pour un voyageur.',
+        providerId: 'openrouter',
         model: modelA,
-        create: (p) => MultiAiAgentFactory.general(p),
       ),
-      _AgentDefinition(
+      AgentDefinition(
         id: 'general-b',
-        label: 'IA généraliste B',
+        name: 'IA généraliste B',
         description: 'Même demande, autre modèle',
+        role: 'exploration générale',
+        instructions: 'Identifie les lieux les plus intéressants et variés pour un voyageur.',
+        providerId: 'openrouter',
         model: modelB,
-        create: (p) => MultiAiAgentFactory.general(p),
       ),
-      _AgentDefinition(
+      const AgentDefinition(
         id: 'moto',
-        label: 'Expert moto / routes',
+        name: 'Expert moto / routes',
         description: 'Cols, routes panoramiques et points de vue',
-        model: modelA,
-        create: (p) => MultiAiAgentFactory.motorcycling(p),
+        role: 'voyage à moto et routes panoramiques',
+        instructions: 'Recherche cols, routes panoramiques, gorges, points de vue et étapes particulièrement intéressantes pour un road-trip à moto.',
+        providerId: 'openrouter',
+        model: 'openrouter/free',
       ),
-      _AgentDefinition(
+      const AgentDefinition(
         id: 'nature',
-        label: 'Expert nature',
+        name: 'Expert nature',
         description: 'Gorges, cascades, lacs, belvédères',
-        model: modelB,
-        create: (p) => MultiAiAgentFactory.nature(p),
+        role: 'nature et paysages',
+        instructions: 'Recherche gorges, cascades, lacs, belvédères, grottes, sommets et sites naturels accessibles depuis la route ou après une courte marche.',
+        providerId: 'openrouter',
+        model: 'openrouter/free',
       ),
-      _AgentDefinition(
+      const AgentDefinition(
         id: 'heritage',
-        label: 'Expert villages / patrimoine',
+        name: 'Expert villages / patrimoine',
         description: 'Villages, monuments et patrimoine',
-        model: modelA,
-        create: (p) => MultiAiAgentFactory.heritage(p),
+        role: 'villages et patrimoine',
+        instructions: 'Recherche villages remarquables, châteaux, monuments, patrimoine historique et lieux culturels.',
+        providerId: 'openrouter',
+        model: 'openrouter/free',
       ),
     ];
+  }
 
-    for (final d in _definitions) {
-      _enabled[d.id] = true;
-    }
-
+  Future<void> _loadConfiguration() async {
+    final saved = await AgentConfigurationStore().loadAgents();
+    final definitions = saved.isEmpty ? _defaultDefinitions() : saved;
+    final factory = await ProviderFactory.load();
+    if (!mounted) return;
+    setState(() {
+      _definitions = definitions;
+      _providerFactory = factory;
+    });
     _refreshFreeModels();
   }
 
@@ -110,53 +109,21 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
         apiKey: HtmlPoiExtractor.apiKey,
       );
       if (!mounted || models.isEmpty) return;
-
       final modelA = models.first.id;
       final modelB = models.length > 1 ? models[1].id : modelA;
-      setState(() {
-        _definitions = [
-          _AgentDefinition(
-            id: 'general-a',
-            label: 'IA généraliste A',
-            description: 'Exploration générale',
-            model: modelA,
-            create: (p) => MultiAiAgentFactory.general(p),
-          ),
-          _AgentDefinition(
-            id: 'general-b',
-            label: 'IA généraliste B',
-            description: 'Même demande, autre modèle gratuit',
-            model: modelB,
-            create: (p) => MultiAiAgentFactory.general(p),
-          ),
-          _AgentDefinition(
-            id: 'moto',
-            label: 'Expert moto / routes',
-            description: 'Cols, routes panoramiques et points de vue',
-            model: modelA,
-            create: (p) => MultiAiAgentFactory.motorcycling(p),
-          ),
-          _AgentDefinition(
-            id: 'nature',
-            label: 'Expert nature',
-            description: 'Gorges, cascades, lacs, belvédères',
-            model: modelB,
-            create: (p) => MultiAiAgentFactory.nature(p),
-          ),
-          _AgentDefinition(
-            id: 'heritage',
-            label: 'Expert villages / patrimoine',
-            description: 'Villages, monuments et patrimoine',
-            model: modelA,
-            create: (p) => MultiAiAgentFactory.heritage(p),
-          ),
-        ];
-        for (final d in _definitions) {
-          _enabled.putIfAbsent(d.id, () => true);
+      final updated = _definitions.map((d) {
+        if (d.providerId != 'openrouter') return d;
+        if (d.id == 'general-a' || d.id == 'moto' || d.id == 'heritage') {
+          return d.copyWith(model: modelA);
         }
-      });
+        if (d.id == 'general-b' || d.id == 'nature') {
+          return d.copyWith(model: modelB);
+        }
+        return d;
+      }).toList();
+      setState(() => _definitions = updated);
     } catch (_) {
-      // L'interface conserve les modèles de secours déjà disponibles.
+      // Les modèles déjà configurés restent utilisables.
     }
   }
 
@@ -176,12 +143,12 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
 
     final active = <DiscoveryAgent>[];
 
-    if (HtmlPoiExtractor.hasApiKey) {
+    final factory = _providerFactory;
+    if (factory != null) {
       for (final definition in _definitions) {
-        if (_enabled[definition.id] != true) continue;
-
-        final provider = OpenRouterProvider(model: definition.model);
-        active.add(definition.create(provider));
+        if (!definition.enabled) continue;
+        final agent = factory.createAgent(definition);
+        if (agent != null) active.add(agent);
       }
     }
 
@@ -189,14 +156,14 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
       active.add(OsmPoiAgent());
     }
 
+    final aiAgentCount = active.whereType<AiDiscoveryAgent>().length;
     if (active.isEmpty) {
       setState(() => _error =
-          'Aucun agent IA disponible. Configurez une clé OpenRouter ou activez '
-          'un agent géographique avec une zone.');
+          'Aucun agent disponible. Configurez au moins un provider IA ou fournissez une zone pour OSM.');
       return;
     }
 
-    if (_osmEnabled && widget.initialBounds == null && !HtmlPoiExtractor.hasApiKey) {
+    if (_osmEnabled && widget.initialBounds == null && aiAgentCount == 0) {
       setState(() => _error =
           'La recherche ne peut pas encore démarrer : aucun agent IA n’est '
           'configuré et aucune zone géographique n’est fournie pour OSM.');
@@ -360,13 +327,11 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
           ..._definitions.map(
             (definition) => CheckboxListTile(
               contentPadding: EdgeInsets.zero,
-              value: _enabled[definition.id] ?? false,
+              value: definition.enabled,
               onChanged: apiReady
-                  ? (v) => setState(
-                        () => _enabled[definition.id] = v ?? false,
-                      )
+                  ? (v) => _setAgentEnabled(definition.id, v ?? false)
                   : null,
-              title: Text(definition.label),
+              title: Text(definition.name),
               subtitle: Text(
                 '${definition.description}\n${_modelLabel(definition.model)}',
               ),
@@ -418,6 +383,15 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
         ],
       ),
     );
+  }
+
+  void _setAgentEnabled(String id, bool enabled) {
+    setState(() {
+      _definitions = _definitions
+          .map((d) => d.id == id ? d.copyWith(enabled: enabled) : d)
+          .toList();
+    });
+    AgentConfigurationStore().saveAgents(_definitions);
   }
 
   String _modelLabel(String id) {

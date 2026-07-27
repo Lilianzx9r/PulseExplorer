@@ -15,3 +15,5 @@ export 'multi_ai_agent_factory.dart';
 export 'agent_definition.dart';
 export 'source_definition.dart';
 export 'configuration_store.dart';
+export 'provider_credentials.dart';
+export 'provider_factory.dart';
