@@ -78,6 +78,16 @@ final kPoiCategories = <PoiCategory>[
     color: const Color(0xFF37474F)),
 ];
 
+
+
+/// Helpers de recherche sur les catégories.
+extension PoiCategoryLookup on Iterable<PoiCategory> {
+  PoiCategory? byId(String id)=>cast<PoiCategory?>().firstWhere((c)=>c!.id==id,orElse:()=>null);
+  PoiCategory? byLabel(String label)=>cast<PoiCategory?>().firstWhere((c)=>c!.label==label,orElse:()=>null);
+  PoiCategory? byEmoji(String emoji)=>cast<PoiCategory?>().firstWhere((c)=>c!.emoji==emoji,orElse:()=>null);
+  Iterable<PoiCategory> get selected=>where((c)=>c.selected);
+}
+
 class OverpassPoiResult {
   final String   name;
   final double   lat;
