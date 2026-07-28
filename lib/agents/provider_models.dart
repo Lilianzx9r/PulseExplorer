@@ -4,19 +4,6 @@ import 'ai_provider.dart';
 /// Il s'agit d'un garde-fou de configuration, pas d'une garantie de facturation.
 enum CostMode { freeOnly, freeTier, paidAllowed }
 
-extension CostModeLabel on CostMode {
-  String get label {
-    switch (this) {
-      case CostMode.freeOnly:
-        return 'Free';
-      case CostMode.freeTier:
-        return 'Free Tier';
-      case CostMode.paidAllowed:
-        return 'Payant possible';
-    }
-  }
-}
-
 class AiModelInfo {
   final String id;
   final String name;
@@ -33,8 +20,6 @@ class AiModelInfo {
   });
 
   bool get isFree => costMode == CostMode.freeOnly;
-
-  String get costLabel => costMode.label;
 }
 
 class ProviderDefinition {
@@ -80,6 +65,48 @@ class ProviderCatalog {
       name: 'Groq',
       description: 'Inference rapide avec limites gratuites selon le compte.',
       costMode: CostMode.freeTier,
+    ),
+    ProviderDefinition(
+      id: 'deepseek',
+      name: 'DeepSeek',
+      description: 'API compatible OpenAI, tarifs très bas / offres gratuites ponctuelles.',
+      costMode: CostMode.freeTier,
+    ),
+    ProviderDefinition(
+      id: 'together',
+      name: 'Together.ai',
+      description: 'Catalogue étendu de modèles open source, certains gratuits.',
+      costMode: CostMode.freeTier,
+    ),
+    ProviderDefinition(
+      id: 'fireworks',
+      name: 'Fireworks AI',
+      description: 'Inference rapide sur modèles open source, crédits gratuits au démarrage.',
+      costMode: CostMode.freeTier,
+    ),
+    ProviderDefinition(
+      id: 'cerebras',
+      name: 'Cerebras',
+      description: 'Inference très rapide sur puces dédiées, offre gratuite limitée.',
+      costMode: CostMode.freeTier,
+    ),
+    ProviderDefinition(
+      id: 'sambanova',
+      name: 'SambaNova',
+      description: 'Cloud IA avec modèles open source, offre gratuite limitée.',
+      costMode: CostMode.freeTier,
+    ),
+    ProviderDefinition(
+      id: 'ollama',
+      name: 'Ollama (local)',
+      description: 'Modèles exécutés localement, aucune clé API nécessaire.',
+      costMode: CostMode.freeOnly,
+    ),
+    ProviderDefinition(
+      id: 'lmstudio',
+      name: 'LM Studio (local)',
+      description: 'Modèles exécutés localement via LM Studio, aucune clé API nécessaire.',
+      costMode: CostMode.freeOnly,
     ),
   ];
 

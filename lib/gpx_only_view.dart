@@ -81,6 +81,17 @@ class _GpxOnlyViewState extends State<GpxOnlyView> {
   // ── POI touristiques Overpass ─────────────────────────────────────────────
   bool                        _showTouristPoi = false;
   final List<PoiCategory>     _categories     = List.from(kPoiCategories);
+
+  // Résout la catégorie d'un résultat Overpass, y compris "Autre" (résultats
+  // de la recherche par nom qui ne matchent aucune catégorie connue) — sans
+  // ce cas particulier, firstWhere retombait à tort sur _categories.first.
+  PoiCategory _categoryFor(String categoryId) {
+    if (categoryId == OverpassPoiService.kOtherCategory.id) {
+      return OverpassPoiService.kOtherCategory;
+    }
+    return _categories.firstWhere(
+        (c) => c.id == categoryId, orElse: () => _categories.first);
+  }
   List<OverpassPoiResult>     _touristResults = [];
   final Set<int>              _touristAdded   = {};
 
@@ -720,8 +731,7 @@ class _GpxOnlyViewState extends State<GpxOnlyView> {
   void _showOverpassContextMenu(int idx) {
     final r     = _touristResults[idx];
     final added = _touristAdded.contains(idx);
-    final cat   = _categories.firstWhere(
-      (c) => c.id == r.categoryId, orElse: () => _categories.first);
+    final cat   = _categoryFor(r.categoryId);
 
     showModalBottomSheet(
       context: context, // context du State — toujours valide ici
@@ -852,8 +862,7 @@ class _GpxOnlyViewState extends State<GpxOnlyView> {
   // Ajouter un résultat Overpass aux POI normaux (avec édition)
   Future<void> _addOverpassPoi(int idx) async {
     final r   = _touristResults[idx];
-    final cat = _categories.firstWhere(
-      (c) => c.id == r.categoryId, orElse: () => _categories.first);
+    final cat = _categoryFor(r.categoryId);
 
     // Ouvrir l'édition pour permettre de modifier avant d'ajouter
     final poi = r.toPoiPoint();
@@ -1267,9 +1276,7 @@ class _GpxOnlyViewState extends State<GpxOnlyView> {
                       final i     = e.key;
                       final r     = e.value;
                       final added = _touristAdded.contains(i);
-                      final cat   = _categories.firstWhere(
-                        (c) => c.id == r.categoryId,
-                        orElse: () => _categories.first);
+                      final cat   = _categoryFor(r.categoryId);
                       // Seuil nom plus bas : dès zoom 9
                       final showName = _currentZoom >= 9.0;
                       const dotSize  = 28.0;

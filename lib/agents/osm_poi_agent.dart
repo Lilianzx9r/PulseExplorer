@@ -51,6 +51,7 @@ class OsmPoiAgent implements DiscoveryAgent {
         maxLon: b.east,
         categories: categories,
         limit: 300,
+        sortOrigin: b.center,
       );
 
       return AgentResult(
