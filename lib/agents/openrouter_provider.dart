@@ -6,7 +6,7 @@ import 'ai_provider.dart';
 
 /// Provider OpenRouter. En mode freeOnly, les modèles explicitement payants
 /// ne doivent pas être sélectionnés par l'interface.
-class OpenRouterProvider implements AiProvider {
+class OpenRouterProvider extends AiProvider {
   @override
   final String model;
 
@@ -74,6 +74,29 @@ class OpenRouterProvider implements AiProvider {
     }
     return content?.toString() ?? '';
   }
+
+  @override
+  Future<bool> connect() async => apiKey.isNotEmpty;
+
+  @override
+  Future<List<String>> models() async {
+    if (apiKey.isEmpty) return [model];
+    try {
+      final free = await fetchFreeModels(apiKey: apiKey, baseUrl: baseUrl);
+      return free.map((m) => m.id).toList();
+    } catch (_) {
+      return [model];
+    }
+  }
+
+  @override
+  bool supportsJson() => true;
+
+  @override
+  bool supportsStreaming() => true;
+
+  @override
+  bool supportsTools() => true;
 
   static Future<List<OpenRouterModel>> fetchFreeModels({
     required String apiKey,

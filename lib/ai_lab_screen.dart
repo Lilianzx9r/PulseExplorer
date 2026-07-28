@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'agents/agents.dart';
+import 'agents/provider_key_store.dart';
+import 'agents/provider_test_service.dart' show kLocalProviders;
 import 'html_poi_extractor.dart';
+import 'widgets/provider_key_dialog.dart';
 
 class AiLabScreen extends StatefulWidget {
   const AiLabScreen({super.key});
@@ -12,16 +15,22 @@ class AiLabScreen extends StatefulWidget {
 
 class _AiLabScreenState extends State<AiLabScreen> {
   final _store = AgentConfigurationStore();
+  final _keyStore = ProviderKeyStore();
   List<AgentDefinition> _agents = [];
   List<SourceDefinition> _sources = SourceCatalog.defaults;
   List<OpenRouterModel> _freeModels = [];
   bool _loadingModels = false;
   String? _modelError;
 
+  /// État réel de configuration par provider (id -> clé présente ?).
+  Map<String, bool> _providerConfigured = {};
+  bool _loadingProviders = true;
+
   @override
   void initState() {
     super.initState();
     _loadAgents();
+    _loadProviderStatus();
   }
 
   Future<void> _loadAgents() async {
@@ -30,44 +39,32 @@ class _AiLabScreenState extends State<AiLabScreen> {
     setState(() => _agents = saved.isEmpty ? _defaultAgents() : saved);
   }
 
-  List<AgentDefinition> _defaultAgents() => [
-        const AgentDefinition(
-          id: 'general',
-          name: 'Exploration générale',
-          description: 'Recherche large de lieux intéressants.',
-          role: 'exploration générale',
-          instructions: 'Identifie les lieux les plus intéressants et variés.',
-          providerId: 'openrouter',
-          model: 'openrouter/free',
-        ),
-        const AgentDefinition(
-          id: 'moto',
-          name: 'Expert moto',
-          description: 'Routes panoramiques, cols et étapes à moto.',
-          role: 'voyage à moto',
-          instructions: 'Recherche routes panoramiques, cols et points de vue.',
-          providerId: 'openrouter',
-          model: 'openrouter/free',
-        ),
-        const AgentDefinition(
-          id: 'nature',
-          name: 'Expert nature',
-          description: 'Gorges, cascades, lacs et belvédères.',
-          role: 'nature et paysages',
-          instructions: 'Recherche des sites naturels accessibles depuis la route ou après une courte marche.',
-          providerId: 'openrouter',
-          model: 'openrouter/free',
-        ),
-        const AgentDefinition(
-          id: 'heritage',
-          name: 'Expert patrimoine',
-          description: 'Villages, monuments et histoire locale.',
-          role: 'villages et patrimoine',
-          instructions: 'Recherche villages remarquables, châteaux et patrimoine.',
-          providerId: 'openrouter',
-          model: 'openrouter/free',
-        ),
-      ];
+  Future<void> _loadProviderStatus() async {
+    setState(() => _loadingProviders = true);
+    final keys = await _keyStore.loadAll();
+    final baseUrls = await _keyStore.loadAllBaseUrls();
+    if (!mounted) return;
+    setState(() {
+      _providerConfigured = {
+        for (final def in ProviderCatalog.definitions)
+          def.id: kLocalProviders.contains(def.id)
+              ? (baseUrls[def.id]?.trim().isNotEmpty ?? false)
+              : (keys[def.id]?.trim().isNotEmpty ?? false),
+        // OpenRouter reste également considéré configuré si une clé a été
+        // saisie via l'onglet "Analyser un blog" (compat. historique).
+        'openrouter': (keys['openrouter']?.trim().isNotEmpty ?? false) ||
+            HtmlPoiExtractor.hasApiKey,
+      };
+      _loadingProviders = false;
+    });
+  }
+
+  /// Catalogue par défaut : les 15 agents thématiques de l'architecture
+  /// cible (`AgentPresets`). L'utilisateur peut désactiver ceux qu'il ne
+  /// souhaite pas utiliser depuis l'onglet Agents ; ses choix sont ensuite
+  /// persistés par `AgentConfigurationStore` et prennent le pas sur ce
+  /// catalogue par défaut au chargement suivant.
+  List<AgentDefinition> _defaultAgents() => AgentPresets.all;
 
   Future<void> _saveAgents() => _store.saveAgents(_agents);
 
@@ -101,6 +98,23 @@ class _AiLabScreenState extends State<AiLabScreen> {
 
   void _toggleSource(int index, bool value) {
     setState(() => _sources[index] = _sources[index].copyWith(enabled: value));
+  }
+
+  Future<void> _openProviderKeyDialog(String providerId, String providerName) async {
+    final changed = await ProviderKeyDialog.show(
+      context,
+      providerId: providerId,
+      providerName: providerName,
+    );
+    if (changed == true) {
+      // Compat. historique : garde HtmlPoiExtractor synchronisé pour
+      // OpenRouter, utilisé ailleurs dans l'app (analyse de blog, etc.).
+      if (providerId == 'openrouter') {
+        final key = await _keyStore.loadKey('openrouter');
+        HtmlPoiExtractor.setApiKey(key);
+      }
+      await _loadProviderStatus();
+    }
   }
 
   @override
@@ -159,17 +173,31 @@ class _AiLabScreenState extends State<AiLabScreen> {
   }
 
   Widget _buildProvidersTab() {
+    if (_loadingProviders) {
+      return const Center(child: CircularProgressIndicator());
+    }
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
-        _providerCard(
-          'OpenRouter',
-          'Modèles gratuits dynamiques + openrouter/free',
-          HtmlPoiExtractor.hasApiKey,
+        const Text(
+          'Providers IA',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        _providerCard('Google Gemini', 'Free Tier selon le compte et le modèle', false),
-        _providerCard('Mistral AI', 'Free Tier selon le compte', false),
-        _providerCard('Groq', 'Free Tier selon le compte', false),
+        const SizedBox(height: 8),
+        const Text('Touchez un provider pour saisir, tester et enregistrer sa clé API.'),
+        const SizedBox(height: 12),
+        _providerCard(
+          id: 'openrouter',
+          name: 'OpenRouter',
+          description: 'Modèles gratuits dynamiques + openrouter/free',
+        ),
+        ...ProviderCatalog.definitions
+            .where((def) => def.id != 'openrouter')
+            .map((def) => _providerCard(
+                  id: def.id,
+                  name: def.name,
+                  description: def.description,
+                )),
         const SizedBox(height: 12),
         FilledButton.icon(
           onPressed: _loadingModels ? null : _refreshOpenRouterModels,
@@ -194,13 +222,19 @@ class _AiLabScreenState extends State<AiLabScreen> {
     );
   }
 
-  Widget _providerCard(String name, String description, bool configured) {
+  Widget _providerCard({
+    required String id,
+    required String name,
+    required String description,
+  }) {
+    final configured = _providerConfigured[id] ?? false;
     return Card(
       child: ListTile(
         leading: Icon(configured ? Icons.check_circle : Icons.radio_button_unchecked),
         title: Text(name),
         subtitle: Text(description),
         trailing: Text(configured ? 'Configuré' : 'À configurer'),
+        onTap: () => _openProviderKeyDialog(id, name),
       ),
     );
   }

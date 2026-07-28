@@ -5,7 +5,7 @@ import 'ai_provider.dart';
 
 /// Provider générique pour les APIs compatibles OpenAI.
 /// Il permet de tester Groq et Mistral sans multiplier le code HTTP.
-class OpenAiCompatibleProvider implements AiProvider {
+class OpenAiCompatibleProvider extends AiProvider {
   @override
   final String id;
   @override
@@ -60,4 +60,13 @@ class OpenAiCompatibleProvider implements AiProvider {
     final message = choices.first['message'] as Map<String, dynamic>?;
     return '${message?['content'] ?? ''}';
   }
+
+  @override
+  Future<bool> connect() async => apiKey.trim().isNotEmpty || baseUrl.contains('localhost') || baseUrl.contains('127.0.0.1');
+
+  @override
+  bool supportsJson() => true;
+
+  @override
+  bool supportsStreaming() => true;
 }

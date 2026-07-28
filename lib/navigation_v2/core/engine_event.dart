@@ -1,0 +1,2 @@
+enum EngineEventType{registered,unregistered,started,stopped,stateChanged,error}
+class EngineEvent{final String engineId;final EngineEventType type;final DateTime timestamp;const EngineEvent({required this.engineId,required this.type,required this.timestamp});}

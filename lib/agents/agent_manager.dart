@@ -38,6 +38,12 @@ class AgentManager {
     return results;
   }
 
+  /// Fusionne des résultats d'agents déjà exécutés (par ex. par
+  /// [AgentOrchestrator]) sans relancer aucun agent. Rendu public pour
+  /// éviter de dupliquer la logique de dédoublonnage/consensus.
+  List<ConsensusPoi> mergeExternalResults(List<AgentResult> results) =>
+      _merge(results);
+
   List<ConsensusPoi> _merge(List<AgentResult> results) {
     final groups = <String, _PoiGroup>{};
 

@@ -1,0 +1,2 @@
+class EngineException implements Exception{final String message;const EngineException(this.message);String toString()=>message;}
+class EngineAlreadyRegisteredException extends EngineException{const EngineAlreadyRegisteredException(super.message);} class EngineNotFoundException extends EngineException{const EngineNotFoundException(super.message);} class EngineStateException extends EngineException{const EngineStateException(super.message);}

@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 
 import 'ai_provider.dart';
 
-class GeminiProvider implements AiProvider {
+class GeminiProvider extends AiProvider {
   @override
   final String model;
   final String apiKey;
@@ -58,4 +58,16 @@ class GeminiProvider implements AiProvider {
     final parts = content?['parts'] as List<dynamic>? ?? const [];
     return parts.map((p) => '${p['text'] ?? ''}').join();
   }
+
+  @override
+  Future<bool> connect() async => apiKey.trim().isNotEmpty;
+
+  @override
+  bool supportsVision() => true;
+
+  @override
+  bool supportsJson() => true;
+
+  @override
+  bool supportsReasoning() => model.contains('thinking') || model.contains('pro');
 }

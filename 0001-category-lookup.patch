@@ -1,0 +1,34 @@
+diff --git a/lib/overpass_poi_service.dart b/lib/overpass_poi_service.dart
+--- a/lib/overpass_poi_service.dart
++++ b/lib/overpass_poi_service.dart
+@@
+ final kPoiCategories = <PoiCategory>[
+   ...
+ ];
++
++/// Helpers de recherche sur les catégories de POI.
++extension PoiCategoryLookup on Iterable<PoiCategory> {
++  PoiCategory? byId(String id) {
++    for (final category in this) {
++      if (category.id == id) return category;
++    }
++    return null;
++  }
++
++  PoiCategory? byLabel(String label) {
++    for (final category in this) {
++      if (category.label == label) return category;
++    }
++    return null;
++  }
++
++  PoiCategory? byEmoji(String emoji) {
++    for (final category in this) {
++      if (category.emoji == emoji) return category;
++    }
++    return null;
++  }
++
++  Iterable<PoiCategory> get selected =>
++      where((category) => category.selected);
++}
